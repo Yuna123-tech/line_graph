@@ -165,6 +165,54 @@ const App = () => {
       }
     };
 
+    // 물결선 그리기 플러그인 (커스텀)
+    const waveLinePlugin = {
+      id: 'waveLine',
+      afterDraw: (chart) => {
+        if (!useWaveLine) return; // 물결선 모드가 아닐 때는 그리지 않음
+
+        const { ctx, chartArea, scales } = chart;
+        const { y, x } = scales;
+
+        // 좌표 계산: Y축의 맨 아래 (X축과 만나는 지점 근처)
+        const xPos = x.left;
+        const yPos = y.bottom;
+        const waveHeight = 16; // 물결선 높이
+        const waveWidth = 8;   // 물결선 너비
+
+        ctx.save();
+        
+        // 1. 기존의 직선 Y축을 지우기 (흰색 박스로 덮음)
+        ctx.fillStyle = '#FFFFFF';
+        ctx.fillRect(xPos - 5, yPos - waveHeight - 4, 10, waveHeight + 8);
+
+        // 2. 물결선(지그재그) 그리기
+        ctx.beginPath();
+        ctx.lineWidth = 2; // 축 두께와 비슷하게
+        ctx.strokeStyle = '#9CA3AF'; // 회색 (Tailwind gray-400)
+        ctx.lineCap = 'round';
+        ctx.lineJoin = 'round';
+
+        const startY = yPos;
+        const endY = yPos - waveHeight;
+        const midX = xPos;
+
+        // 번개 모양/지그재그 경로
+        ctx.moveTo(midX, startY); // 맨 아래
+        ctx.lineTo(midX - waveWidth/2, startY - (waveHeight * 0.25));
+        ctx.lineTo(midX + waveWidth/2, startY - (waveHeight * 0.5));
+        ctx.lineTo(midX - waveWidth/2, startY - (waveHeight * 0.75));
+        ctx.lineTo(midX, endY); // 위쪽 연결
+        
+        ctx.stroke();
+
+        // 3. (선택사항) '0' 텍스트를 물결선 아래에 표시하고 싶다면 아래 주석 해제
+        // 하지만 공간이 좁아 겹칠 수 있어 물결선만으로 '생략'을 표현하는 것이 깔끔합니다.
+        
+        ctx.restore();
+      }
+    };
+
     chartInstance.current = new window.Chart(ctx, {
       type: 'line',
       data: {
@@ -184,7 +232,8 @@ const App = () => {
           tension: 0.3 // 곡선 부드럽게
         }]
       },
-      options: chartOptions
+      options: chartOptions,
+      plugins: [waveLinePlugin] // 플러그인 등록
     });
 
     return () => {
