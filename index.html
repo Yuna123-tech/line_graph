@@ -1,461 +1,402 @@
-import React, { useState, useEffect, useRef } from 'react';
-
-// 아이콘 컴포넌트 (Inline SVGs for stability)
-const IconPlus = () => (
-  <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><line x1="12" y1="5" x2="12" y2="19"></line><line x1="5" y1="12" x2="19" y2="12"></line></svg>
-);
-const IconTrash = () => (
-  <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><polyline points="3 6 5 6 21 6"></polyline><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"></path><line x1="10" y1="11" x2="10" y2="17"></line><line x1="14" y1="11" x2="14" y2="17"></line></svg>
-);
-const IconDownload = () => (
-  <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"></path><polyline points="7 10 12 15 17 10"></polyline><line x1="12" y1="15" x2="12" y2="3"></line></svg>
-);
-const IconRefresh = () => (
-  <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><polyline points="23 4 23 10 17 10"></polyline><polyline points="1 20 1 14 7 14"></polyline><path d="M3.51 9a9 9 0 0 1 14.85-3.36L23 10M1 14l4.64 4.36A9 9 0 0 0 20.49 15"></path></svg>
-);
-const IconBarChart = () => (
-  <svg xmlns="http://www.w3.org/2000/svg" width="32" height="32" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><line x1="18" y1="20" x2="18" y2="10"></line><line x1="12" y1="20" x2="12" y2="4"></line><line x1="6" y1="20" x2="6" y2="14"></line></svg>
-);
-const IconWaves = () => (
-    <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M2 6c.6.5 1.2 1 2.5 1C7 7 7 5 9.5 5c2.6 0 2.4 2 5 2 2.5 0 2.5-2 5-2 1.3 0 1.9.5 2.5 1"></path><path d="M2 12c.6.5 1.2 1 2.5 1C7 13 7 11 9.5 11c2.6 0 2.4 2 5 2 2.5 0 2.5-2 5-2 1.3 0 1.9.5 2.5 1"></path><path d="M2 18c.6.5 1.2 1 2.5 1 2.5 0 2.5-2 5-2 2.6 0 2.4 2 5 2 2.5 0 2.5-2 5-2 1.3 0 1.9.5 2.5 1"></path></svg>
-);
-
-const App = () => {
-  // 상태 관리: 그래프 제목, 축 이름, 데이터 포인트, 색상 테마
-  const [graphTitle, setGraphTitle] = useState('우리 반 키 변화');
-  const [xAxisLabel, setXAxisLabel] = useState('이름');
-  const [yAxisLabel, setYAxisLabel] = useState('키 (cm)');
-  const [lineColor, setLineColor] = useState('#3B82F6'); // 기본 파란색
-  
-  // 새로 추가된 상태: 눈금 간격, 물결선 여부
-  const [stepSize, setStepSize] = useState(''); // 빈 값이면 자동
-  const [useWaveLine, setUseWaveLine] = useState(false);
-
-  const [dataPoints, setDataPoints] = useState([
-    { id: 1, label: '3월', value: 130 },
-    { id: 2, label: '4월', value: 131 },
-    { id: 3, label: '5월', value: 132.5 },
-    { id: 4, label: '6월', value: 133 },
-    { id: 5, label: '7월', value: 134.2 },
-  ]);
-  const [isChartReady, setIsChartReady] = useState(false);
-
-  const chartRef = useRef(null);
-  const chartInstance = useRef(null);
-
-  // Chart.js 스크립트 로드
-  useEffect(() => {
-    if (window.Chart) {
-      setIsChartReady(true);
-      return;
-    }
-
-    const script = document.createElement('script');
-    script.src = "https://cdn.jsdelivr.net/npm/chart.js";
-    script.async = true;
-    script.onload = () => setIsChartReady(true);
-    document.body.appendChild(script);
-
-    return () => {
-      // Cleanup if needed
-    };
-  }, []);
-
-  // 데이터 추가 함수
-  const addDataPoint = () => {
-    const newId = dataPoints.length > 0 ? Math.max(...dataPoints.map(d => d.id)) + 1 : 1;
-    setDataPoints([...dataPoints, { id: newId, label: '', value: 0 }]);
-  };
-
-  // 데이터 삭제 함수
-  const removeDataPoint = (id) => {
-    if (dataPoints.length <= 2) {
-      alert("데이터는 최소 2개 이상 있어야 해요!");
-      return;
-    }
-    setDataPoints(dataPoints.filter(point => point.id !== id));
-  };
-
-  // 데이터 수정 함수
-  const updateDataPoint = (id, field, value) => {
-    setDataPoints(dataPoints.map(point => 
-      point.id === id ? { ...point, [field]: value } : point
-    ));
-  };
-
-  // 초기화 함수
-  const resetData = () => {
-    if(confirm("정말 모든 데이터를 지우고 다시 시작할까요?")) {
-      setDataPoints([
-        { id: 1, label: '1번', value: 0 },
-        { id: 2, label: '2번', value: 0 },
-      ]);
-      setGraphTitle('제목 없는 그래프');
-      setStepSize('');
-      setUseWaveLine(false);
-    }
-  };
-
-  // 이미지 저장 함수
-  const downloadGraph = () => {
-    const canvas = chartRef.current;
-    if (!canvas) return;
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>구름반 꺾은선 그래프 만들기</title>
     
-    const link = document.createElement('a');
-    link.download = `${graphTitle}.png`;
-    link.href = canvas.toDataURL('image/png');
-    link.click();
-  };
+    <!-- Tailwind CSS (디자인) -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    
+    <!-- 폰트: Jua (제목용), Noto Sans KR (본문용) -->
+    <link href="https://fonts.googleapis.com/css2?family=Jua&family=Noto+Sans+KR:wght@400;700&display=swap" rel="stylesheet">
+    
+    <!-- React & ReactDOM (웹앱 엔진) -->
+    <script crossorigin src="https://unpkg.com/react@18/umd/react.production.min.js"></script>
+    <script crossorigin src="https://unpkg.com/react-dom@18/umd/react-dom.production.min.js"></script>
+    
+    <!-- Babel (JSX 변환기) -->
+    <script src="https://unpkg.com/@babel/standalone/babel.min.js"></script>
 
-  // Chart.js 렌더링 및 업데이트
-  useEffect(() => {
-    if (!isChartReady || !chartRef.current) return;
+    <!-- Chart.js (그래프 엔진) -->
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
 
-    if (chartInstance.current) {
-      chartInstance.current.destroy();
-    }
-
-    const ctx = chartRef.current.getContext('2d');
-
-    // Chart.js 옵션 구성
-    const chartOptions = {
-      responsive: true,
-      maintainAspectRatio: false,
-      plugins: {
-        legend: {
-          display: true,
-          position: 'top',
-          labels: { font: { size: 14, family: "'Jua', sans-serif" } }
-        },
-        title: {
-          display: true,
-          text: graphTitle,
-          font: { size: 20, family: "'Jua', sans-serif" },
-          padding: 20
-        },
-        tooltip: {
-          backgroundColor: 'rgba(255, 255, 255, 0.9)',
-          titleColor: '#000',
-          bodyColor: '#000',
-          borderColor: '#ddd',
-          borderWidth: 1,
-          padding: 10,
-          displayColors: false,
-        }
-      },
-      scales: {
-        x: {
-          title: { display: true, text: xAxisLabel, font: { weight: 'bold' } },
-          grid: { display: false }
-        },
-        y: {
-          title: { display: true, text: yAxisLabel, font: { weight: 'bold' } },
-          // 물결선 로직: useWaveLine이 참이면 0부터 시작하지 않음(false), 거짓이면 0부터 시작(true)
-          beginAtZero: !useWaveLine, 
-          grid: { borderDash: [5, 5] },
-          ticks: {
-            // 눈금 간격 설정: 값이 있으면 사용, 없으면 자동
-            stepSize: stepSize && Number(stepSize) > 0 ? Number(stepSize) : undefined
-          }
-        }
-      },
-      animation: {
-        duration: 800,
-        easing: 'easeOutQuart'
-      }
-    };
-
-    // 물결선 그리기 플러그인 (커스텀)
-    const waveLinePlugin = {
-      id: 'waveLine',
-      afterDraw: (chart) => {
-        if (!useWaveLine) return; // 물결선 모드가 아닐 때는 그리지 않음
-
-        const { ctx, chartArea, scales } = chart;
-        const { y, x } = scales;
-
-        // 좌표 계산: Y축의 맨 아래 (X축과 만나는 지점 근처)
-        const xPos = x.left;
-        const yPos = y.bottom;
-        const waveHeight = 16; // 물결선 높이
-        const waveWidth = 8;   // 물결선 너비
-
-        ctx.save();
-        
-        // 1. 기존의 직선 Y축을 지우기 (흰색 박스로 덮음)
-        ctx.fillStyle = '#FFFFFF';
-        ctx.fillRect(xPos - 5, yPos - waveHeight - 4, 10, waveHeight + 8);
-
-        // 2. 물결선(지그재그) 그리기
-        ctx.beginPath();
-        ctx.lineWidth = 2; // 축 두께와 비슷하게
-        ctx.strokeStyle = '#9CA3AF'; // 회색 (Tailwind gray-400)
-        ctx.lineCap = 'round';
-        ctx.lineJoin = 'round';
-
-        const startY = yPos;
-        const endY = yPos - waveHeight;
-        const midX = xPos;
-
-        // 번개 모양/지그재그 경로
-        ctx.moveTo(midX, startY); // 맨 아래
-        ctx.lineTo(midX - waveWidth/2, startY - (waveHeight * 0.25));
-        ctx.lineTo(midX + waveWidth/2, startY - (waveHeight * 0.5));
-        ctx.lineTo(midX - waveWidth/2, startY - (waveHeight * 0.75));
-        ctx.lineTo(midX, endY); // 위쪽 연결
-        
-        ctx.stroke();
-
-        // 3. (선택사항) '0' 텍스트를 물결선 아래에 표시하고 싶다면 아래 주석 해제
-        // 하지만 공간이 좁아 겹칠 수 있어 물결선만으로 '생략'을 표현하는 것이 깔끔합니다.
-        
-        ctx.restore();
-      }
-    };
-
-    chartInstance.current = new window.Chart(ctx, {
-      type: 'line',
-      data: {
-        labels: dataPoints.map(d => d.label === '' ? '(비어있음)' : d.label),
-        datasets: [{
-          label: yAxisLabel,
-          data: dataPoints.map(d => d.value),
-          borderColor: lineColor,
-          backgroundColor: `${lineColor}33`, // 투명도 추가
-          pointBackgroundColor: '#fff',
-          pointBorderColor: lineColor,
-          pointHoverBackgroundColor: lineColor,
-          pointBorderWidth: 2,
-          pointRadius: 6,
-          pointHoverRadius: 8,
-          fill: true,
-          tension: 0.3 // 곡선 부드럽게
-        }]
-      },
-      options: chartOptions,
-      plugins: [waveLinePlugin] // 플러그인 등록
-    });
-
-    return () => {
-      if (chartInstance.current) {
-        chartInstance.current.destroy();
-      }
-    };
-  }, [isChartReady, dataPoints, graphTitle, xAxisLabel, yAxisLabel, lineColor, stepSize, useWaveLine]);
-
-  return (
-    <div className="min-h-screen bg-sky-50 font-sans text-gray-800 p-4 md:p-8 font-['Pretendard']">
-      {/* 폰트 로드 (Google Fonts - Jua for cute titles, Pretendard for body) */}
-      <style>{`
-        @import url('https://fonts.googleapis.com/css2?family=Jua&family=Noto+Sans+KR:wght@400;700&display=swap');
-        h1, h2, h3, .cute-font { font-family: 'Jua', sans-serif; }
+    <style>
         body { font-family: 'Noto Sans KR', sans-serif; }
-      `}</style>
-
-      <div className="max-w-6xl mx-auto grid grid-cols-1 lg:grid-cols-12 gap-6">
+        h1, h2, h3, .cute-font { font-family: 'Jua', sans-serif; }
         
-        {/* 헤더 */}
-        <div className="lg:col-span-12 bg-white rounded-3xl shadow-lg p-6 flex flex-col md:flex-row justify-between items-center border-4 border-sky-200">
-          <div className="flex items-center gap-4 mb-4 md:mb-0">
-            <div className="bg-sky-100 p-3 rounded-full text-sky-600">
-              <IconBarChart />
-            </div>
-            <div>
-              <h1 className="text-3xl text-sky-600 mb-1">구름반 꺾은선 그래프 만들기</h1>
-              <p className="text-gray-500">표에 값을 넣으면 그래프가 쑥쑥 자라나요!</p>
-            </div>
-          </div>
-          <div className="flex gap-2">
-             <button 
-              onClick={resetData}
-              className="flex items-center gap-2 px-4 py-2 bg-gray-100 hover:bg-gray-200 text-gray-600 rounded-xl transition-colors font-bold"
-            >
-              <IconRefresh />
-              다시 하기
-            </button>
-            <button 
-              onClick={downloadGraph}
-              className="flex items-center gap-2 px-6 py-2 bg-indigo-500 hover:bg-indigo-600 text-white rounded-xl shadow-md transition-all transform hover:-translate-y-1 font-bold"
-            >
-              <IconDownload />
-              그림 저장하기
-            </button>
-          </div>
-        </div>
+        /* 스크롤바 꾸미기 */
+        .custom-scrollbar::-webkit-scrollbar { width: 8px; }
+        .custom-scrollbar::-webkit-scrollbar-track { background: #f1f1f1; border-radius: 4px; }
+        .custom-scrollbar::-webkit-scrollbar-thumb { background: #cbd5e1; border-radius: 4px; }
+        .custom-scrollbar::-webkit-scrollbar-thumb:hover { background: #94a3b8; }
+        
+        /* 애니메이션 */
+        @keyframes fadeIn {
+            from { opacity: 0; transform: translateY(10px); }
+            to { opacity: 1; transform: translateY(0); }
+        }
+        .animate-fadeIn { animation: fadeIn 0.3s ease-out forwards; }
+    </style>
+</head>
+<body class="bg-sky-50 text-gray-800">
 
-        {/* 왼쪽: 설정 및 데이터 입력 */}
-        <div className="lg:col-span-4 space-y-6">
-          
-          {/* 1. 그래프 설정 카드 */}
-          <div className="bg-white rounded-3xl shadow-md p-6 border-2 border-indigo-100">
-            <h2 className="text-xl text-indigo-800 mb-4 flex items-center gap-2">
-              <span className="bg-indigo-100 text-indigo-600 w-8 h-8 rounded-full flex items-center justify-center text-sm">1</span>
-              제목과 색상 정하기
-            </h2>
-            <div className="space-y-4">
-              <div>
-                <label className="block text-sm font-bold text-gray-600 mb-1">그래프 제목</label>
-                <input 
-                  type="text" 
-                  value={graphTitle} 
-                  onChange={(e) => setGraphTitle(e.target.value)}
-                  className="w-full p-3 bg-gray-50 border-2 border-gray-200 rounded-xl focus:border-indigo-400 focus:outline-none transition-colors"
-                  placeholder="예: 콩나물 키 재기"
-                />
-              </div>
-              <div className="grid grid-cols-2 gap-4">
-                <div>
-                   <label className="block text-sm font-bold text-gray-600 mb-1">가로축 이름 (무엇?)</label>
-                   <input 
-                    type="text" 
-                    value={xAxisLabel}
-                    onChange={(e) => setXAxisLabel(e.target.value)}
-                    className="w-full p-2 bg-gray-50 border-2 border-gray-200 rounded-xl focus:border-indigo-400 focus:outline-none"
-                  />
+    <!-- 리액트 앱이 들어갈 곳 -->
+    <div id="root"></div>
+
+    <!-- 리액트 코드 시작 -->
+    <script type="text/babel">
+        const { useState, useEffect, useRef } = React;
+
+        // --- 아이콘 컴포넌트들 ---
+        const IconPlus = () => (
+            <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><line x1="12" y1="5" x2="12" y2="19"></line><line x1="5" y1="12" x2="19" y2="12"></line></svg>
+        );
+        const IconTrash = () => (
+            <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><polyline points="3 6 5 6 21 6"></polyline><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"></path><line x1="10" y1="11" x2="10" y2="17"></line><line x1="14" y1="11" x2="14" y2="17"></line></svg>
+        );
+        const IconDownload = () => (
+            <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"></path><polyline points="7 10 12 15 17 10"></polyline><line x1="12" y1="15" x2="12" y2="3"></line></svg>
+        );
+        const IconRefresh = () => (
+            <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><polyline points="23 4 23 10 17 10"></polyline><polyline points="1 20 1 14 7 14"></polyline><path d="M3.51 9a9 9 0 0 1 14.85-3.36L23 10M1 14l4.64 4.36A9 9 0 0 0 20.49 15"></path></svg>
+        );
+        const IconBarChart = () => (
+            <svg xmlns="http://www.w3.org/2000/svg" width="32" height="32" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><line x1="18" y1="20" x2="18" y2="10"></line><line x1="12" y1="20" x2="12" y2="4"></line><line x1="6" y1="20" x2="6" y2="14"></line></svg>
+        );
+        const IconWaves = () => (
+            <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M2 6c.6.5 1.2 1 2.5 1C7 7 7 5 9.5 5c2.6 0 2.4 2 5 2 2.5 0 2.5-2 5-2 1.3 0 1.9.5 2.5 1"></path><path d="M2 12c.6.5 1.2 1 2.5 1C7 13 7 11 9.5 11c2.6 0 2.4 2 5 2 2.5 0 2.5-2 5-2 1.3 0 1.9.5 2.5 1"></path><path d="M2 18c.6.5 1.2 1 2.5 1 2.5 0 2.5-2 5-2 2.6 0 2.4 2 5 2 2.5 0 2.5-2 5-2 1.3 0 1.9.5 2.5 1"></path></svg>
+        );
+
+        const App = () => {
+            // 상태 관리
+            const [graphTitle, setGraphTitle] = useState('우리 반 키 변화');
+            const [xAxisLabel, setXAxisLabel] = useState('이름');
+            const [yAxisLabel, setYAxisLabel] = useState('키 (cm)');
+            const [lineColor, setLineColor] = useState('#3B82F6');
+            const [stepSize, setStepSize] = useState('');
+            const [useWaveLine, setUseWaveLine] = useState(false);
+
+            const [dataPoints, setDataPoints] = useState([
+                { id: 1, label: '3월', value: 130 },
+                { id: 2, label: '4월', value: 131 },
+                { id: 3, label: '5월', value: 132.5 },
+                { id: 4, label: '6월', value: 133 },
+                { id: 5, label: '7월', value: 134.2 },
+            ]);
+
+            const chartRef = useRef(null);
+            const chartInstance = useRef(null);
+
+            // 데이터 추가
+            const addDataPoint = () => {
+                const newId = dataPoints.length > 0 ? Math.max(...dataPoints.map(d => d.id)) + 1 : 1;
+                setDataPoints([...dataPoints, { id: newId, label: '', value: 0 }]);
+            };
+
+            // 데이터 삭제
+            const removeDataPoint = (id) => {
+                if (dataPoints.length <= 2) {
+                    alert("데이터는 최소 2개 이상 있어야 해요!");
+                    return;
+                }
+                setDataPoints(dataPoints.filter(point => point.id !== id));
+            };
+
+            // 데이터 수정
+            const updateDataPoint = (id, field, value) => {
+                setDataPoints(dataPoints.map(point => 
+                    point.id === id ? { ...point, [field]: value } : point
+                ));
+            };
+
+            // 초기화
+            const resetData = () => {
+                if(confirm("정말 모든 데이터를 지우고 다시 시작할까요?")) {
+                    setDataPoints([
+                        { id: 1, label: '1번', value: 0 },
+                        { id: 2, label: '2번', value: 0 },
+                    ]);
+                    setGraphTitle('제목 없는 그래프');
+                    setStepSize('');
+                    setUseWaveLine(false);
+                }
+            };
+
+            // 이미지 저장
+            const downloadGraph = () => {
+                const canvas = chartRef.current;
+                if (!canvas) return;
+                
+                const link = document.createElement('a');
+                link.download = `${graphTitle}.png`;
+                link.href = canvas.toDataURL('image/png');
+                link.click();
+            };
+
+            // 차트 그리기
+            useEffect(() => {
+                if (!chartRef.current) return;
+
+                if (chartInstance.current) {
+                    chartInstance.current.destroy();
+                }
+
+                const ctx = chartRef.current.getContext('2d');
+
+                // 물결선 플러그인
+                const waveLinePlugin = {
+                    id: 'waveLine',
+                    afterDraw: (chart) => {
+                        if (!useWaveLine) return;
+
+                        const { ctx, chartArea, scales } = chart;
+                        const { y, x } = scales;
+
+                        const xPos = x.left;
+                        const yPos = y.bottom;
+                        const waveHeight = 16; 
+                        const waveWidth = 8;  
+
+                        ctx.save();
+                        
+                        // Y축 하단 덮어쓰기
+                        ctx.fillStyle = '#FFFFFF';
+                        ctx.fillRect(xPos - 5, yPos - waveHeight - 4, 10, waveHeight + 8);
+
+                        // 물결선 그리기
+                        ctx.beginPath();
+                        ctx.lineWidth = 2;
+                        ctx.strokeStyle = '#9CA3AF'; // 회색
+                        ctx.lineCap = 'round';
+                        ctx.lineJoin = 'round';
+
+                        const startY = yPos;
+                        const endY = yPos - waveHeight;
+                        const midX = xPos;
+
+                        ctx.moveTo(midX, startY);
+                        ctx.lineTo(midX - waveWidth/2, startY - (waveHeight * 0.25));
+                        ctx.lineTo(midX + waveWidth/2, startY - (waveHeight * 0.5));
+                        ctx.lineTo(midX - waveWidth/2, startY - (waveHeight * 0.75));
+                        ctx.lineTo(midX, endY);
+                        
+                        ctx.stroke();
+                        ctx.restore();
+                    }
+                };
+
+                chartInstance.current = new Chart(ctx, {
+                    type: 'line',
+                    data: {
+                        labels: dataPoints.map(d => d.label === '' ? '(비어있음)' : d.label),
+                        datasets: [{
+                            label: yAxisLabel,
+                            data: dataPoints.map(d => d.value),
+                            borderColor: lineColor,
+                            backgroundColor: `${lineColor}33`,
+                            pointBackgroundColor: '#fff',
+                            pointBorderColor: lineColor,
+                            pointHoverBackgroundColor: lineColor,
+                            pointBorderWidth: 2,
+                            pointRadius: 6,
+                            pointHoverRadius: 8,
+                            fill: true,
+                            tension: 0.3
+                        }]
+                    },
+                    options: {
+                        responsive: true,
+                        maintainAspectRatio: false,
+                        plugins: {
+                            legend: {
+                                display: true,
+                                position: 'top',
+                                labels: { font: { size: 14, family: "'Jua', sans-serif" } }
+                            },
+                            title: {
+                                display: true,
+                                text: graphTitle,
+                                font: { size: 20, family: "'Jua', sans-serif" },
+                                padding: 20
+                            },
+                            tooltip: {
+                                backgroundColor: 'rgba(255, 255, 255, 0.9)',
+                                titleColor: '#000',
+                                bodyColor: '#000',
+                                borderColor: '#ddd',
+                                borderWidth: 1,
+                                padding: 10,
+                                displayColors: false,
+                            }
+                        },
+                        scales: {
+                            x: {
+                                title: { display: true, text: xAxisLabel, font: { weight: 'bold' } },
+                                grid: { display: false }
+                            },
+                            y: {
+                                title: { display: true, text: yAxisLabel, font: { weight: 'bold' } },
+                                beginAtZero: !useWaveLine, 
+                                grid: { borderDash: [5, 5] },
+                                ticks: {
+                                    stepSize: stepSize && Number(stepSize) > 0 ? Number(stepSize) : undefined
+                                }
+                            }
+                        },
+                        animation: {
+                            duration: 800,
+                            easing: 'easeOutQuart'
+                        }
+                    },
+                    plugins: [waveLinePlugin]
+                });
+
+                return () => {
+                    if (chartInstance.current) {
+                        chartInstance.current.destroy();
+                    }
+                };
+            }, [dataPoints, graphTitle, xAxisLabel, yAxisLabel, lineColor, stepSize, useWaveLine]);
+
+            return (
+                <div className="min-h-screen p-4 md:p-8">
+                    <div className="max-w-6xl mx-auto grid grid-cols-1 lg:grid-cols-12 gap-6">
+                        
+                        {/* 헤더 */}
+                        <div className="lg:col-span-12 bg-white rounded-3xl shadow-lg p-6 flex flex-col md:flex-row justify-between items-center border-4 border-sky-200">
+                            <div className="flex items-center gap-4 mb-4 md:mb-0">
+                                <div className="bg-sky-100 p-3 rounded-full text-sky-600">
+                                    <IconBarChart />
+                                </div>
+                                <div>
+                                    <h1 className="text-3xl text-sky-600 mb-1">구름반 꺾은선 그래프 만들기</h1>
+                                    <p className="text-gray-500">표에 값을 넣으면 그래프가 쑥쑥 자라나요!</p>
+                                </div>
+                            </div>
+                            <div className="flex gap-2">
+                                <button onClick={resetData} className="flex items-center gap-2 px-4 py-2 bg-gray-100 hover:bg-gray-200 text-gray-600 rounded-xl transition-colors font-bold">
+                                    <IconRefresh /> 다시 하기
+                                </button>
+                                <button onClick={downloadGraph} className="flex items-center gap-2 px-6 py-2 bg-indigo-500 hover:bg-indigo-600 text-white rounded-xl shadow-md transition-all transform hover:-translate-y-1 font-bold">
+                                    <IconDownload /> 그림 저장하기
+                                </button>
+                            </div>
+                        </div>
+
+                        {/* 왼쪽 패널 */}
+                        <div className="lg:col-span-4 space-y-6">
+                            
+                            {/* 설정 카드 */}
+                            <div className="bg-white rounded-3xl shadow-md p-6 border-2 border-indigo-100">
+                                <h2 className="text-xl text-indigo-800 mb-4 flex items-center gap-2">
+                                    <span className="bg-indigo-100 text-indigo-600 w-8 h-8 rounded-full flex items-center justify-center text-sm">1</span>
+                                    제목과 색상 정하기
+                                </h2>
+                                <div className="space-y-4">
+                                    <div>
+                                        <label className="block text-sm font-bold text-gray-600 mb-1">그래프 제목</label>
+                                        <input type="text" value={graphTitle} onChange={(e) => setGraphTitle(e.target.value)} className="w-full p-3 bg-gray-50 border-2 border-gray-200 rounded-xl focus:border-indigo-400 focus:outline-none" />
+                                    </div>
+                                    <div className="grid grid-cols-2 gap-4">
+                                        <div>
+                                            <label className="block text-sm font-bold text-gray-600 mb-1">가로축 이름</label>
+                                            <input type="text" value={xAxisLabel} onChange={(e) => setXAxisLabel(e.target.value)} className="w-full p-2 bg-gray-50 border-2 border-gray-200 rounded-xl focus:border-indigo-400 focus:outline-none" />
+                                        </div>
+                                        <div>
+                                            <label className="block text-sm font-bold text-gray-600 mb-1">세로축 이름</label>
+                                            <input type="text" value={yAxisLabel} onChange={(e) => setYAxisLabel(e.target.value)} className="w-full p-2 bg-gray-50 border-2 border-gray-200 rounded-xl focus:border-indigo-400 focus:outline-none" />
+                                        </div>
+                                    </div>
+                                    
+                                    {/* 눈금 설정 */}
+                                    <div className="pt-2 border-t border-gray-100 mt-2">
+                                        <label className="block text-sm font-bold text-gray-600 mb-2">눈금 설정 (고급)</label>
+                                        <div className="grid grid-cols-2 gap-4">
+                                            <div>
+                                                <label className="text-xs text-gray-500 mb-1 block">눈금 한 칸 크기</label>
+                                                <input type="number" value={stepSize} onChange={(e) => setStepSize(e.target.value)} placeholder="자동" className="w-full p-2 bg-gray-50 border-2 border-gray-200 rounded-xl focus:border-indigo-400 focus:outline-none text-sm" />
+                                            </div>
+                                            <div className="flex items-center">
+                                                <button onClick={() => setUseWaveLine(!useWaveLine)} className={`w-full flex items-center justify-center gap-2 p-2 rounded-xl border-2 transition-all ${useWaveLine ? 'bg-indigo-50 border-indigo-400 text-indigo-700 font-bold' : 'bg-gray-50 border-gray-200 text-gray-500'}`}>
+                                                    <IconWaves />
+                                                    <span className="text-sm">물결선 {useWaveLine ? 'ON' : 'OFF'}</span>
+                                                </button>
+                                            </div>
+                                        </div>
+                                    </div>
+
+                                    <div>
+                                        <label className="block text-sm font-bold text-gray-600 mb-2">선 색상</label>
+                                        <div className="flex gap-2">
+                                            {['#3B82F6', '#EF4444', '#10B981', '#F59E0B', '#8B5CF6', '#EC4899'].map(color => (
+                                                <button key={color} onClick={() => setLineColor(color)} className={`w-8 h-8 rounded-full border-2 transition-transform hover:scale-110 ${lineColor === color ? 'border-gray-600 scale-110 ring-2 ring-offset-2 ring-gray-300' : 'border-transparent'}`} style={{ backgroundColor: color }} />
+                                            ))}
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+
+                            {/* 데이터 입력 카드 */}
+                            <div className="bg-white rounded-3xl shadow-md p-6 border-2 border-sky-100">
+                                <div className="flex justify-between items-center mb-4">
+                                    <h2 className="text-xl text-sky-800 flex items-center gap-2">
+                                        <span className="bg-sky-100 text-sky-600 w-8 h-8 rounded-full flex items-center justify-center text-sm">2</span>
+                                        표 채우기
+                                    </h2>
+                                    <button onClick={addDataPoint} className="flex items-center gap-1 text-sm bg-sky-100 text-sky-700 px-3 py-1.5 rounded-lg hover:bg-sky-200 font-bold transition-colors">
+                                        <IconPlus /> 추가하기
+                                    </button>
+                                </div>
+                                <div className="max-h-[300px] overflow-y-auto pr-2 custom-scrollbar">
+                                    <div className="grid grid-cols-12 gap-2 mb-2 text-center text-xs font-bold text-gray-500 bg-gray-50 py-2 rounded-lg">
+                                        <div className="col-span-5">{xAxisLabel || '가로'}</div>
+                                        <div className="col-span-5">{yAxisLabel || '세로'}</div>
+                                        <div className="col-span-2">삭제</div>
+                                    </div>
+                                    {dataPoints.map((point) => (
+                                        <div key={point.id} className="grid grid-cols-12 gap-2 mb-2 items-center animate-fadeIn">
+                                            <div className="col-span-5">
+                                                <input type="text" value={point.label} onChange={(e) => updateDataPoint(point.id, 'label', e.target.value)} placeholder="예: 1일" className="w-full p-2 border-2 border-gray-200 rounded-lg text-center focus:border-sky-400 focus:outline-none focus:bg-sky-50" />
+                                            </div>
+                                            <div className="col-span-5">
+                                                <input type="number" value={point.value} onChange={(e) => updateDataPoint(point.id, 'value', Number(e.target.value))} className="w-full p-2 border-2 border-gray-200 rounded-lg text-center focus:border-sky-400 focus:outline-none focus:bg-sky-50 font-bold text-sky-700" />
+                                            </div>
+                                            <div className="col-span-2 flex justify-center">
+                                                <button onClick={() => removeDataPoint(point.id)} className="p-2 text-gray-400 hover:text-red-500 hover:bg-red-50 rounded-lg transition-colors" title="삭제">
+                                                    <IconTrash />
+                                                </button>
+                                            </div>
+                                        </div>
+                                    ))}
+                                </div>
+                            </div>
+                        </div>
+
+                        {/* 그래프 영역 */}
+                        <div className="lg:col-span-8">
+                            <div className="bg-white rounded-3xl shadow-xl p-4 md:p-8 h-full border-4 border-gray-100 flex flex-col justify-center relative min-h-[500px]">
+                                <div className="absolute top-4 right-8 text-sky-100 opacity-50 pointer-events-none">
+                                    <svg width="100" height="60" viewBox="0 0 24 24" fill="currentColor">
+                                        <path d="M17.5,19c-3.037,0-5.5-2.463-5.5-5.5c0-0.448,0.066-0.878,0.176-1.288C10.983,12.066,9.5,12,9.5,12 c-2.485,0-4.5,2.015-4.5,4.5S7.015,21,9.5,21h8c2.485,0,4.5-2.015,4.5-4.5s-2.015-4.5-4.5-4.5c-0.445,0-0.873,0.076-1.276,0.207 C16.685,10.158,15.656,9,14.5,9c-1.854,0-3.41,1.258-3.856,2.969C10.363,11.977,10.088,12,9.805,12C8.262,12,7,13.262,7,14.805 S8.262,17.609,9.805,17.609h7.695c1.378,0,2.5-1.122,2.5-2.5S18.878,12.609,17.5,12.609c-0.209,0-0.41,0.034-0.6,0.091V12.5 c0-2.481-2.019-4.5-4.5-4.5c-1.704,0-3.188,0.95-3.99,2.378C8.169,10.141,7.842,10.046,7.5,10.046c-2.485,0-4.5,2.015-4.5,4.5 s2.015,4.5,4.5,4.5h10v-0.046Z" />
+                                    </svg>
+                                </div>
+                                <div className="w-full h-[500px] relative z-10 flex items-center justify-center">
+                                    <canvas ref={chartRef}></canvas>
+                                </div>
+                                <div className="mt-8 text-center text-gray-400 text-sm font-['Jua'] bg-gray-50 rounded-xl py-3 border border-gray-100">
+                                    💡 팁: {useWaveLine ? '물결선이 켜져서 0부터 시작하지 않아요!' : '그래프 위의 점을 마우스로 가리키면 정확한 값을 볼 수 있어요!'}
+                                </div>
+                            </div>
+                        </div>
+
+                    </div>
                 </div>
-                <div>
-                   <label className="block text-sm font-bold text-gray-600 mb-1">세로축 이름 (단위)</label>
-                   <input 
-                    type="text" 
-                    value={yAxisLabel}
-                    onChange={(e) => setYAxisLabel(e.target.value)}
-                    className="w-full p-2 bg-gray-50 border-2 border-gray-200 rounded-xl focus:border-indigo-400 focus:outline-none"
-                  />
-                </div>
-              </div>
+            );
+        };
 
-              {/* 추가된 눈금 설정 섹션 */}
-              <div className="pt-2 border-t border-gray-100 mt-2">
-                <label className="block text-sm font-bold text-gray-600 mb-2">눈금 설정 (고급)</label>
-                <div className="grid grid-cols-2 gap-4">
-                  <div>
-                    <label className="text-xs text-gray-500 mb-1 block">눈금 한 칸 크기</label>
-                    <input 
-                      type="number" 
-                      value={stepSize}
-                      onChange={(e) => setStepSize(e.target.value)}
-                      placeholder="자동"
-                      className="w-full p-2 bg-gray-50 border-2 border-gray-200 rounded-xl focus:border-indigo-400 focus:outline-none text-sm"
-                    />
-                  </div>
-                  <div className="flex items-center">
-                    <button
-                      onClick={() => setUseWaveLine(!useWaveLine)}
-                      className={`w-full flex items-center justify-center gap-2 p-2 rounded-xl border-2 transition-all ${
-                        useWaveLine 
-                          ? 'bg-indigo-50 border-indigo-400 text-indigo-700 font-bold' 
-                          : 'bg-gray-50 border-gray-200 text-gray-500'
-                      }`}
-                    >
-                      <IconWaves />
-                      <span className="text-sm">물결선 {useWaveLine ? 'ON' : 'OFF'}</span>
-                    </button>
-                  </div>
-                </div>
-                <p className="text-xs text-gray-400 mt-2">
-                  * 물결선을 켜면 0부터 시작하지 않고 값 근처에서 시작해요.
-                </p>
-              </div>
-
-              <div>
-                <label className="block text-sm font-bold text-gray-600 mb-2">선 색상 고르기</label>
-                <div className="flex gap-2">
-                  {['#3B82F6', '#EF4444', '#10B981', '#F59E0B', '#8B5CF6', '#EC4899'].map(color => (
-                    <button
-                      key={color}
-                      onClick={() => setLineColor(color)}
-                      className={`w-8 h-8 rounded-full border-2 transition-transform hover:scale-110 ${lineColor === color ? 'border-gray-600 scale-110 ring-2 ring-offset-2 ring-gray-300' : 'border-transparent'}`}
-                      style={{ backgroundColor: color }}
-                    />
-                  ))}
-                </div>
-              </div>
-            </div>
-          </div>
-
-          {/* 2. 데이터 입력 카드 */}
-          <div className="bg-white rounded-3xl shadow-md p-6 border-2 border-sky-100">
-             <div className="flex justify-between items-center mb-4">
-              <h2 className="text-xl text-sky-800 flex items-center gap-2">
-                <span className="bg-sky-100 text-sky-600 w-8 h-8 rounded-full flex items-center justify-center text-sm">2</span>
-                표 채우기
-              </h2>
-              <button 
-                onClick={addDataPoint}
-                className="flex items-center gap-1 text-sm bg-sky-100 text-sky-700 px-3 py-1.5 rounded-lg hover:bg-sky-200 font-bold transition-colors"
-              >
-                <IconPlus /> 추가하기
-              </button>
-            </div>
-            
-            <div className="max-h-[300px] overflow-y-auto pr-2 custom-scrollbar">
-              <div className="grid grid-cols-12 gap-2 mb-2 text-center text-xs font-bold text-gray-500 bg-gray-50 py-2 rounded-lg">
-                <div className="col-span-5">{xAxisLabel || '가로'}</div>
-                <div className="col-span-5">{yAxisLabel || '세로'}</div>
-                <div className="col-span-2">삭제</div>
-              </div>
-
-              {dataPoints.map((point) => (
-                <div key={point.id} className="grid grid-cols-12 gap-2 mb-2 items-center animate-fadeIn">
-                  <div className="col-span-5">
-                    <input
-                      type="text"
-                      value={point.label}
-                      onChange={(e) => updateDataPoint(point.id, 'label', e.target.value)}
-                      placeholder="예: 1일"
-                      className="w-full p-2 border-2 border-gray-200 rounded-lg text-center focus:border-sky-400 focus:outline-none focus:bg-sky-50"
-                    />
-                  </div>
-                  <div className="col-span-5">
-                    <input
-                      type="number"
-                      value={point.value}
-                      onChange={(e) => updateDataPoint(point.id, 'value', Number(e.target.value))}
-                      className="w-full p-2 border-2 border-gray-200 rounded-lg text-center focus:border-sky-400 focus:outline-none focus:bg-sky-50 font-bold text-sky-700"
-                    />
-                  </div>
-                  <div className="col-span-2 flex justify-center">
-                    <button
-                      onClick={() => removeDataPoint(point.id)}
-                      className="p-2 text-gray-400 hover:text-red-500 hover:bg-red-50 rounded-lg transition-colors"
-                      title="삭제"
-                    >
-                      <IconTrash />
-                    </button>
-                  </div>
-                </div>
-              ))}
-            </div>
-          </div>
-        </div>
-
-        {/* 오른쪽: 그래프 영역 */}
-        <div className="lg:col-span-8">
-          <div className="bg-white rounded-3xl shadow-xl p-4 md:p-8 h-full border-4 border-gray-100 flex flex-col justify-center relative min-h-[500px]">
-            {/* 배경 장식 (구름) */}
-            <div className="absolute top-4 right-8 text-sky-100 opacity-50 pointer-events-none">
-              <svg width="100" height="60" viewBox="0 0 24 24" fill="currentColor">
-                <path d="M17.5,19c-3.037,0-5.5-2.463-5.5-5.5c0-0.448,0.066-0.878,0.176-1.288C10.983,12.066,9.5,12,9.5,12 c-2.485,0-4.5,2.015-4.5,4.5S7.015,21,9.5,21h8c2.485,0,4.5-2.015,4.5-4.5s-2.015-4.5-4.5-4.5c-0.445,0-0.873,0.076-1.276,0.207 C16.685,10.158,15.656,9,14.5,9c-1.854,0-3.41,1.258-3.856,2.969C10.363,11.977,10.088,12,9.805,12C8.262,12,7,13.262,7,14.805 S8.262,17.609,9.805,17.609h7.695c1.378,0,2.5-1.122,2.5-2.5S18.878,12.609,17.5,12.609c-0.209,0-0.41,0.034-0.6,0.091V12.5 c0-2.481-2.019-4.5-4.5-4.5c-1.704,0-3.188,0.95-3.99,2.378C8.169,10.141,7.842,10.046,7.5,10.046c-2.485,0-4.5,2.015-4.5,4.5 s2.015,4.5,4.5,4.5h10v-0.046Z" />
-              </svg>
-            </div>
-
-            <div className="w-full h-[500px] relative z-10 flex items-center justify-center">
-              {!isChartReady ? (
-                <div className="text-gray-400 animate-pulse">그래프 도구를 불러오는 중...</div>
-              ) : (
-                <canvas ref={chartRef} />
-              )}
-            </div>
-
-            <div className="mt-8 text-center text-gray-400 text-sm font-['Jua'] bg-gray-50 rounded-xl py-3 border border-gray-100">
-              💡 팁: {useWaveLine ? '물결선이 켜져서 0부터 시작하지 않아요!' : '그래프 위의 점을 마우스로 가리키면 정확한 값을 볼 수 있어요!'}
-            </div>
-          </div>
-        </div>
-
-      </div>
-    </div>
-  );
-};
-
-export default App;
+        const root = ReactDOM.createRoot(document.getElementById('root'));
+        root.render(<App />);
+    </script>
+</body>
+</html>
