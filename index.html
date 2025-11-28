@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>구름반 꺾은선 그래프 만들기</title>
+    <title>꺾은선 그래프 만들기</title>
     
     <!-- Tailwind CSS (디자인) -->
     <script src="https://cdn.tailwindcss.com"></script>
@@ -201,8 +201,8 @@
                             pointBorderWidth: 2,
                             pointRadius: 6,
                             pointHoverRadius: 8,
-                            fill: true,
-                            tension: 0.3
+                            fill: false, // 채우기 없음 설정
+                            tension: 0 // 직선 설정
                         }]
                     },
                     options: {
@@ -233,7 +233,8 @@
                         scales: {
                             x: {
                                 title: { display: true, text: xAxisLabel, font: { weight: 'bold' } },
-                                grid: { display: false }
+                                grid: { display: false },
+                                offset: true // 0일때 값이 축에서 시작하지 않도록 여백 추가
                             },
                             y: {
                                 title: { display: true, text: yAxisLabel, font: { weight: 'bold' } },
